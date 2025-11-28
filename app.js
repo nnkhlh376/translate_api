@@ -334,20 +334,35 @@ function closeRoute() {
     if (len === 0 && state !== State.Idle) setState(State.Idle);
   }
 
+    const API_BASE = "https://translate-api-backend.onrender.com"; // backend Render
+
   async function doTranslate(text) {
     const src = srcSel ? srcSel.value : 'en';
     const dest = destSel ? destSel.value : 'vi';
+
+    // Nếu cùng ngôn ngữ thì trả nguyên văn
     if (src === dest) return text;
-    const resp = await fetch('http://127.0.0.1:8000/api/translate', {
+
+    const resp = await fetch(`${API_BASE}/api/translate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source_lang: src, target_lang: dest, text })
+      body: JSON.stringify({
+        source_lang: src,
+        target_lang: dest,
+        text
+      })
     });
-    if (!resp.ok) throw new Error('Backend API error');
+
+    if (!resp.ok) {
+      throw new Error('Backend API error: ' + resp.status);
+    }
+
     const data = await resp.json();
     if (data.translated_text) return data.translated_text;
+
     throw new Error(data.error || 'Empty translation');
   }
+
 
   async function handleTranslate() {
     const text = input.value.trim();
