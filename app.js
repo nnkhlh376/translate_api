@@ -270,3 +270,143 @@ function closeRoute() {
     routingControl = null;
   }
 }
+
+// --- Quick Translate Popup Logic ---
+(function initQuickTranslate() {
+  const fab = document.getElementById('quickTranslateBtn');
+  const overlay = document.getElementById('qtOverlay');
+  const popup = document.getElementById('qtPopup');
+  const closeBtn = document.getElementById('qtCloseBtn');
+  const input = document.getElementById('qtInput');
+  const counter = document.getElementById('qtCounter');
+  const translateBtn = document.getElementById('qtTranslateBtn');
+  const output = document.getElementById('qtOutput');
+  const copyBtn = document.getElementById('qtCopyBtn');
+  const errorEl = document.getElementById('qtError');
+  const srcSel = document.getElementById('qtSrc');
+  const destSel = document.getElementById('qtDest');
+  const swapBtn = document.getElementById('qtSwap');
+
+  if (!fab || !overlay || !popup) return;
+
+  const State = { Idle: 'idle', Typing: 'typing', Loading: 'loading', Success: 'success', Error: 'error' };
+  let state = State.Idle;
+
+  function setState(next) {
+    state = next;
+    // Enable/disable controls based on state
+    const loading = state === State.Loading;
+    input.disabled = loading;
+    translateBtn.disabled = loading || !input.value.trim();
+    errorEl.hidden = state !== State.Error;
+    if (loading) {
+      translateBtn.textContent = 'Đang dịch…';
+    } else {
+      translateBtn.textContent = 'Dịch';
+    }
+  }
+
+  function openPopup() {
+    overlay.classList.remove('is-hidden');
+    popup.classList.remove('is-hidden');
+    setState(State.Idle);
+    output.textContent = '';
+    errorEl.hidden = true;
+    input.focus();
+  }
+
+  function closePopup() {
+    overlay.classList.add('is-hidden');
+    popup.classList.add('is-hidden');
+    // Clear fields when closing
+    input.value = '';
+    output.textContent = '';
+    counter.textContent = '0 / 500';
+    setState(State.Idle);
+    errorEl.hidden = true;
+  }
+
+  function updateCounter() {
+    const len = input.value.length;
+    counter.textContent = `${len} / 500`;
+    translateBtn.disabled = len === 0 || state === State.Loading;
+    if (len > 0 && state === State.Idle) setState(State.Typing);
+    if (len === 0 && state !== State.Idle) setState(State.Idle);
+  }
+
+  async function doTranslate(text) {
+    const src = srcSel ? srcSel.value : 'en';
+    const dest = destSel ? destSel.value : 'vi';
+    if (src === dest) return text;
+    const resp = await fetch('http://127.0.0.1:8000/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_lang: src, target_lang: dest, text })
+    });
+    if (!resp.ok) throw new Error('Backend API error');
+    const data = await resp.json();
+    if (data.translated_text) return data.translated_text;
+    throw new Error(data.error || 'Empty translation');
+  }
+
+  async function handleTranslate() {
+    const text = input.value.trim();
+    if (!text) return;
+    setState(State.Loading);
+    try {
+      const translated = await doTranslate(text);
+      output.textContent = translated;
+      setState(State.Success);
+    } catch (e) {
+      console.error('Translate error:', e);
+      setState(State.Error);
+      errorEl.hidden = false;
+    }
+  }
+
+  function handleCopy() {
+    const text = output.textContent || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = '✔ Copied';
+      setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 1000);
+    }).catch(err => console.error('Copy failed', err));
+  }
+
+  // Event bindings
+  fab.addEventListener('click', openPopup);
+  closeBtn.addEventListener('click', closePopup);
+  overlay.addEventListener('click', closePopup);
+  translateBtn.addEventListener('click', handleTranslate);
+  copyBtn.addEventListener('click', handleCopy);
+  input.addEventListener('input', updateCounter);
+  if (swapBtn && srcSel && destSel) {
+    swapBtn.addEventListener('click', () => {
+      const src = srcSel.value;
+      srcSel.value = destSel.value;
+      destSel.value = src;
+    });
+  }
+  input.addEventListener('keydown', (e) => {
+    // Enter submits; Shift+Enter inserts newline
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleTranslate();
+    }
+    // Ctrl/Cmd+Enter also submits
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleTranslate();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const isOpen = !popup.classList.contains('is-hidden');
+    if (e.key === 'Escape' && isOpen) {
+      closePopup();
+    }
+  });
+
+  // Initialize counter state
+  updateCounter();
+})();

@@ -7,36 +7,97 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fjalla+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha512‑…" crossorigin="" />
+    integrity="sha512-…" crossorigin="" />
   <!-- Leaflet Routing Machine CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  <link rel="stylesheet" href="style.css"> <!-- Liên kết với file CSS -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="controls">
-    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;"></div>
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <input type="text" id="placeInput" placeholder="Nhập tên địa điểm tại Việt Nam…" size="40">
       <button id="searchBtn">Tìm</button>
       <div id="google_translate_element" style="margin-left: auto;"></div>
     </div>
   </div>
+
   <!-- Weather info panel (populated by app.js) -->
   <div id="weatherInfo" class="weather-info" aria-live="polite"></div>
   <div id="map"></div>
 
+  <!-- Quick Translate floating button -->
+  <button id="quickTranslateBtn" class="qt-fab" aria-label="Dịch nhanh">🌐 Dịch nhanh</button>
+
+  <!-- Overlay + Popup for Quick Translate -->
+  <div id="qtOverlay" class="qt-overlay is-hidden"></div>
+  <div id="qtPopup" class="qt-popup is-hidden" aria-modal="true" role="dialog" aria-labelledby="qtTitle">
+    <div class="qt-header">
+      <div class="qt-title" id="qtTitle">🌐 Dịch nhanh</div>
+      <button class="qt-close" id="qtCloseBtn" aria-label="Đóng">✕</button>
+    </div>
+
+    <!-- Thanh chọn ngôn ngữ -->
+    <div class="qt-langbar">
+      <label class="qt-lang">
+        <!-- Ngôn ngữ nguồn: mặc định Tiếng Việt -->
+        <select id="qtSrc" aria-label="Ngôn ngữ nguồn">
+          <option value="en">English</option>
+          <option value="vi" selected>Tiếng Việt</option>
+        </select>
+      </label>
+
+      <span class="qt-swap" title="Đổi chiều" id="qtSwap">⇄</span>
+
+      <label class="qt-lang">
+        <!-- Ngôn ngữ đích: mặc định English -->
+        <select id="qtDest" aria-label="Ngôn ngữ đích">
+          <option value="vi">Tiếng Việt</option>
+          <option value="en" selected>English</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="qt-panels">
+      <div class="qt-panel qt-left">
+        <textarea
+          id="qtInput"
+          class="qt-textarea"
+          rows="4"
+          maxlength="500"
+          placeholder="Nhập văn bản cần dịch…"></textarea>
+        <div class="qt-bottom">
+          <div class="qt-counter" id="qtCounter">0 / 500</div>
+          <button id="qtTranslateBtn" class="qt-primary" disabled>Dịch</button>
+        </div>
+        <div class="qt-error" id="qtError" role="alert" hidden>
+          Có lỗi khi dịch. Vui lòng thử lại.
+        </div>
+      </div>
+
+      <div class="qt-panel qt-right">
+        <div id="qtOutput" class="qt-output" aria-live="polite"></div>
+        <div class="qt-actions">
+          <button id="qtCopyBtn" class="qt-secondary" title="Copy">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha512‑…" crossorigin=""></script>
+    integrity="sha512-…" crossorigin=""></script>
   <!-- Leaflet Routing Machine JS -->
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <script src="app.js"></script>
-  <script type = "text/javascript">
+
+  <!-- Google Translate widget cho toàn trang -->
+  <script type="text/javascript">
     function googleTranslateElementInit() {
       new google.translate.TranslateElement(
         {
-          pageLanguage: 'vi', 
+          pageLanguage: 'vi',
           includedLanguages: 'en,vi,ja,ko,zh-CN,zh-TW,fr,de,es,th',
           layout: google.translate.TranslateElement.InlineLayout.SIMPLE
-        }, 
+        },
         'google_translate_element'
       );
     }
